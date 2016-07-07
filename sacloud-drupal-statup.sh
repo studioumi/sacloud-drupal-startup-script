@@ -75,16 +75,13 @@ drush -y dl drupal-7 --destination=/var/www --drupal-project-rename=html
 # アップロードされたファイルを保存するためのディレクトリを用意
 mkdir /var/www/html/sites/default/files /var/www/html/sites/default/private
 
-# Drupal ディレクトリの所有者を apche に変更
-chown -R apache: /var/www/html
-
 # Drupal サイトのルートディレクトリに移動して drush コマンドに備える
 cd /var/www/html
 
 # Drupal をインストール
 drush -y si\
   --db-url=mysql://root@localhost/drupal\
-  --locale=ja
+  --locale=ja\
   --account-name=@@@user_name@@@\
   --account-pass=@@@password@@@\
   --account-mail=@@@mail@@@\
@@ -112,6 +109,9 @@ drush -y en l10n_update
 # 最新の日本語情報を取得してインポート
 drush l10n-update-refresh
 drush l10n-update
+
+# Drupal ディレクトリの所有者を apche に変更
+chown -R apache: /var/www/html
 
 # Drupal のクロンタスクを作成し一時間に一度の頻度で回す
 cat << EOS > /etc/cron.hourly/drupal
