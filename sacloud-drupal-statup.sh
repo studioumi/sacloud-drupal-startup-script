@@ -19,10 +19,6 @@ yum makecache fast
 yum -y install php php-mysql php-gd php-dom php-mbstring mariadb mariadb-server httpd
 yum -y install --enablerepo=remi php-pecl-apcu php-pecl-zendopcache
 
-# MySQL サーバーを自動起動するようにして起動
-systemctl enable mariadb.service
-systemctl start mariadb.service
-
 # Drupal で .htaccess を使用するため /var/www/html ディレクトリに対してオーバーライドを全て許可する
 patch /etc/httpd/conf/httpd.conf << EOS
 151c151
@@ -61,6 +57,10 @@ patch /etc/php.d/apcu.ini << EOS
 ---
 > apc.rfc1867=1
 EOS
+
+# MySQL サーバーを自動起動するようにして起動
+systemctl enable mariadb.service
+systemctl start mariadb.service
 
 # 最新版の Drush をダウンロードする
 php -r "readfile('http://files.drush.org/drush.phar');" > drush
