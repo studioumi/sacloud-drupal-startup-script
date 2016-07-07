@@ -17,7 +17,7 @@
 # 必要なミドルウェアを全てインストール
 yum makecache fast
 yum -y install php php-mysql php-gd php-dom php-mbstring mariadb mariadb-server httpd
-yum -y install --enablerepo=remi php-pecl-apcu.x86_64 php-pecl-zendopcache.x86_64
+yum -y install --enablerepo=remi php-pecl-apcu php-pecl-zendopcache
 
 # MySQL サーバーを自動起動するようにして起動
 systemctl enable mariadb.service
