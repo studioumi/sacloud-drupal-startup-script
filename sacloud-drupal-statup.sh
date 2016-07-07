@@ -83,7 +83,7 @@ cd /var/www/html
 
 # Drupal をインストール
 drush -y si\
-  --db-url=mysql://root@localhost/drupal7\
+  --db-url=mysql://root@localhost/drupal\
   --locale=ja
   --account-name=@@@user_name@@@\
   --account-pass=@@@password@@@\
