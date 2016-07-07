@@ -110,7 +110,7 @@ drush -y en l10n_update
 drush l10n-update-refresh
 drush l10n-update
 
-# Drupal ディレクトリの所有者を apche に変更
+# Drupal のルートディレクトリ (/var/www/html) 以下の所有者を apache に変更
 chown -R apache: /var/www/html
 
 # Drupal のクロンタスクを作成し一時間に一度の頻度で回す
