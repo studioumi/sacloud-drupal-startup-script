@@ -82,7 +82,13 @@ chown -R apache: /var/www/html
 cd /var/www/html
 
 # Drupal をインストール
-drush -y si --account-name=@@@user_name@@@ --account-pass=@@@password@@@ --account-mail=@@@mail@@@ --site-name=@@@site_name@@@ --db-url=mysql://root@localhost/drupal7
+drush -y si\
+  --db-url=mysql://root@localhost/drupal7\
+  --locale=ja
+  --account-name=@@@user_name@@@\
+  --account-pass=@@@password@@@\
+  --account-mail=@@@mail@@@\
+  --site-name=@@@site_name@@@
 
 # アップデートマネージャーモジュールを有効化
 drush -y en update
