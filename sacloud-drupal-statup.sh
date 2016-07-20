@@ -15,9 +15,9 @@
 # @sacloud-text required shellarg maxlen=254 ex=your.name@example.com mail "Drupal 管理ユーザーのメールアドレス"
 
 # 必要なミドルウェアを全てインストール
-yum makecache fast
-yum -y install php php-mysql php-gd php-dom php-mbstring mariadb mariadb-server httpd
-yum -y install --enablerepo=remi php-pecl-apcu php-pecl-zendopcache
+yum makecache fast || exit 1
+yum -y install php php-mysql php-gd php-dom php-mbstring mariadb mariadb-server httpd || exit 1
+yum -y install --enablerepo=remi php-pecl-apcu php-pecl-zendopcache || exit 1
 
 # Drupal で .htaccess を使用するため /var/www/html ディレクトリに対してオーバーライドを全て許可する
 patch /etc/httpd/conf/httpd.conf << EOS
@@ -59,21 +59,21 @@ patch /etc/php.d/apcu.ini << EOS
 EOS
 
 # MySQL サーバーを自動起動するようにして起動
-systemctl enable mariadb.service
-systemctl start mariadb.service
+systemctl enable mariadb.service || exit 1
+systemctl start mariadb.service || exit 1
 
 # 最新版の Drush をダウンロードする
-php -r "readfile('http://files.drush.org/drush.phar');" > drush
+php -r "readfile('http://files.drush.org/drush.phar');" > drush || exit 1
 
 # drush コマンドを実行可能にして /usr/local/bin に移動
-chmod +x drush
-mv drush /usr/local/bin
+chmod +x drush || exit 1
+mv drush /usr/local/bin || exit 1
 
 # Drupal をダウンロード
-drush -y dl drupal-7 --destination=/var/www --drupal-project-rename=html
+drush -y dl drupal-7 --destination=/var/www --drupal-project-rename=html || exit 1
 
 # アップロードされたファイルを保存するためのディレクトリを用意
-mkdir /var/www/html/sites/default/files /var/www/html/sites/default/private
+mkdir /var/www/html/sites/default/files /var/www/html/sites/default/private || exit 1
 
 # Drupal サイトのルートディレクトリに移動して drush コマンドに備える
 cd /var/www/html
@@ -85,46 +85,46 @@ drush -y si\
   --account-name=@@@user_name@@@\
   --account-pass=@@@password@@@\
   --account-mail=@@@mail@@@\
-  --site-name=@@@site_name@@@
+  --site-name=@@@site_name@@@ || exit 1
 
 # アップデートマネージャーモジュールを有効化
-drush -y en update
+drush -y en update || exit 1
 
 # Drupal をローカライズするためのモジュールを有効化
-drush -y en locale
+drush -y en locale || exit 1
 
 # 日本のロケール設定
-drush -y vset site_default_country JP
+drush -y vset site_default_country JP || exit 1
 
 # 日本語をデフォルトの言語として追加
 # drush_language モジュールも使えるが、スタートアップスクリプトでは上手く
 # 動かないので eval を使う
-drush eval "locale_add_language('ja', 'Japanese', '日本語');"
-drush eval '$langs = language_list(); variable_set("language_default", $langs["ja"])'
+drush eval "locale_add_language('ja', 'Japanese', '日本語');" || exit 1
+drush eval '$langs = language_list(); variable_set("language_default", $langs["ja"])' || exit 1
 
 # 最新の日本語ファイルを取り込むモジュールをダウンロードしてインストール
-drush -y dl l10n_update
-drush -y en l10n_update
+drush -y dl l10n_update || exit 1
+drush -y en l10n_update || exit 1
 
 # 最新の日本語情報を取得してインポート
-drush l10n-update-refresh
-drush l10n-update
+drush l10n-update-refresh || exit 1
+drush l10n-update || exit 1
 
 # Drupal のルートディレクトリ (/var/www/html) 以下の所有者を apache に変更
-chown -R apache: /var/www/html
+chown -R apache: /var/www/html || exit 1
 
 # Drupal のクロンタスクを作成し一時間に一度の頻度で回す
 cat << EOS > /etc/cron.hourly/drupal
 #!/bin/bash
 /usr/local/bin/drush -r /var/www/html cron
 EOS
-chmod 755 /etc/cron.hourly/drupal
+chmod 755 /etc/cron.hourly/drupal || exit 1
 
 # Apache を自動起動する
-systemctl enable httpd.service
+systemctl enable httpd.service || exit 1
 
 # Apache を起動する
-systemctl start httpd.service
+systemctl start httpd.service || exit 1
 
 # ファイアウォールに対し http プロトコルでのアクセスを許可する
-firewall-cmd --add-service=http
+firewall-cmd --add-service=http || exit 1
