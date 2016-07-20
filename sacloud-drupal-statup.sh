@@ -5,19 +5,31 @@
 # @sacloud-require-archive distro-centos distro-ver-7.*
 #
 # @sacloud-desc-begin
-#   Cent OS 7 に Drupal 7 と必要なミドルウェアをインストールします。
+#   Cent OS 7 に Drupal と必要なミドルウェアをインストールします。
 # @sacloud-desc-end
 #
 # Drupal の管理ユーザーの入力フォームの設定
+# @sacloud-select-begin required default=7 drupal_version "Drupal バージョン"
+#   7 "Drupal 7.x"
+#   8 "Drupal 8.x"
+# @sacloud-select-end
 # @sacloud-text required shellarg maxlen=128 site_name "Drupal サイト名"
 # @sacloud-text required shellarg maxlen=60 ex=Admin user_name "Drupal 管理ユーザーの名前"
 # @sacloud-password required shellarg maxlen=60 password "Drupal 管理ユーザーのパスワード"
 # @sacloud-text required shellarg maxlen=254 ex=your.name@example.com mail "Drupal 管理ユーザーのメールアドレス"
 
+DRUPAL_VERSION=@@@drupal_version@@@
+
 # 必要なミドルウェアを全てインストール
 yum makecache fast || exit 1
-yum -y install php php-mysql php-gd php-dom php-mbstring mariadb mariadb-server httpd || exit 1
-yum -y install --enablerepo=remi php-pecl-apcu php-pecl-zendopcache || exit 1
+# Drupal 7, 8 共通のパッケージをインストール
+yum -y install mariadb mariadb-server httpd || exit 1
+if [ $DRUPAL_VERSION -eq 7 ]; then
+  yum -y install php php-mysql php-gd php-dom php-mbstring || exit 1
+  yum -y install --enablerepo=remi php-pecl-apcu php-pecl-zendopcache || exit 1
+elif [ $DRUPAL_VERSION -eq 8 ]; then
+  yum -y install --enablerepo=remi,remi-php56 gd-last php php-mysql php-gd php-dom php-mbstring php-pecl-apcu php-pecl-zendopcache || exit 1
+fi
 
 # Drupal で .htaccess を使用するため /var/www/html ディレクトリに対してオーバーライドを全て許可する
 patch /etc/httpd/conf/httpd.conf << EOS
@@ -51,7 +63,13 @@ patch /etc/php.ini << EOS
 EOS
 
 # ファイルアップロード時のプログレスバーを表示できるようにする
-patch /etc/php.d/apcu.ini << EOS
+if [ $DRUPAL_VERSION -eq 7 ]; then
+  file_path=/etc/php.d/apcu.ini
+elif [ $DRUPAL_VERSION -eq 8 ]; then
+  # Drupal 8 の場合は REMI 版の APCu を使うためパスが違う
+  file_path=/etc/php.d/40-apcu.ini
+fi
+patch $file_path << EOS
 67c67
 < ;apc.rfc1867=0
 ---
@@ -70,7 +88,12 @@ chmod +x drush || exit 1
 mv drush /usr/local/bin || exit 1
 
 # Drupal をダウンロード
-drush -y dl drupal-7 --destination=/var/www --drupal-project-rename=html || exit 1
+if [ $DRUPAL_VERSION -eq 7 ]; then
+  project=drupal-7
+elif [ $DRUPAL_VERSION -eq 8 ]; then
+  project=drupal-8
+fi
+drush -y dl $project --destination=/var/www --drupal-project-rename=html || exit 1
 
 # アップロードされたファイルを保存するためのディレクトリを用意
 mkdir /var/www/html/sites/default/files /var/www/html/sites/default/private || exit 1
@@ -87,28 +110,37 @@ drush -y si\
   --account-mail=@@@mail@@@\
   --site-name=@@@site_name@@@ || exit 1
 
-# アップデートマネージャーモジュールを有効化
-drush -y en update || exit 1
+if [ $DRUPAL_VERSION -eq 7 ]; then
+  # アップデートマネージャーモジュールを有効化
+  drush -y en update || exit 1
 
-# Drupal をローカライズするためのモジュールを有効化
-drush -y en locale || exit 1
+  # Drupal をローカライズするためのモジュールを有効化
+  drush -y en locale || exit 1
 
-# 日本のロケール設定
-drush -y vset site_default_country JP || exit 1
+  # 日本のロケール設定
+  drush -y vset site_default_country JP || exit 1
 
-# 日本語をデフォルトの言語として追加
-# drush_language モジュールも使えるが、スタートアップスクリプトでは上手く
-# 動かないので eval を使う
-drush eval "locale_add_language('ja', 'Japanese', '日本語');" || exit 1
-drush eval '$langs = language_list(); variable_set("language_default", $langs["ja"])' || exit 1
+  # 日本語をデフォルトの言語として追加
+  # drush_language モジュールも使えるが、スタートアップスクリプトでは上手く
+  # 動かないので eval を使う
+  drush eval "locale_add_language('ja', 'Japanese', '日本語');" || exit 1
+  drush eval '$langs = language_list(); variable_set("language_default", $langs["ja"])' || exit 1
 
-# 最新の日本語ファイルを取り込むモジュールをダウンロードしてインストール
-drush -y dl l10n_update || exit 1
-drush -y en l10n_update || exit 1
+  # 最新の日本語ファイルを取り込むモジュールをダウンロードしてインストール
+  drush -y dl l10n_update || exit 1
+  drush -y en l10n_update || exit 1
 
-# 最新の日本語情報を取得してインポート
-drush l10n-update-refresh || exit 1
-drush l10n-update || exit 1
+  # 最新の日本語情報を取得してインポート
+  drush l10n-update-refresh || exit 1
+  drush l10n-update || exit 1
+elif [ $DRUPAL_VERSION -eq 8 ]; then
+  # 日本語翻訳のインポート
+  drush locale-check || exit 1
+  drush locale-update || exit 1
+
+  # 日本語訳がキャッシュにより中途半端な状態になることがあるので、キャッシュをリビルトする
+  drush cr || exit 1
+fi
 
 # Drupal のルートディレクトリ (/var/www/html) 以下の所有者を apache に変更
 chown -R apache: /var/www/html || exit 1
