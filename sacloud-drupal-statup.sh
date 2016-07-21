@@ -111,9 +111,6 @@ drush -y si\
   --site-name=@@@site_name@@@ || exit 1
 
 if [ $DRUPAL_VERSION -eq 7 ]; then
-  # アップデートマネージャーモジュールを有効化
-  drush -y en update || exit 1
-
   # Drupal をローカライズするためのモジュールを有効化
   drush -y en locale || exit 1
 
