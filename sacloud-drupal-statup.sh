@@ -5,7 +5,11 @@
 # @sacloud-require-archive distro-centos distro-ver-7.*
 #
 # @sacloud-desc-begin
-#   Cent OS 7 に Drupal と必要なミドルウェアをインストールします。
+#   Drupalをインストールします。
+#   サーバ作成後、WebブラウザでサーバのIPアドレスにアクセスしてください。
+#   http://サーバのIPアドレス/
+#   ※ セットアップには5分程度時間がかかります。
+#   （このスクリプトは、CentOS7.Xでのみ動作します）
 # @sacloud-desc-end
 #
 # Drupal の管理ユーザーの入力フォームの設定
