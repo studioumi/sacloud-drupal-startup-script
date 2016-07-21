@@ -157,3 +157,11 @@ systemctl start httpd.service || exit 1
 
 # ファイアウォールに対し http プロトコルでのアクセスを許可する
 firewall-cmd --add-service=http || exit 1
+
+# レポート画面で利用可能なアップデートに問題があると警告されるため、アップデート
+# 処理を行う。
+# - 即時アップデート確認を行うとステータス画面で正常と認識されないため、sleep
+#   コマンドで1分後に実行する。
+# - `--update-backend=drupal` を指定しないと、レポート画面に正しく反映されない。
+sleep 1m
+drush -y up --update-backend=drupal || exit 1
