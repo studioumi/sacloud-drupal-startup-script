@@ -27,12 +27,15 @@ DRUPAL_VERSION=@@@drupal_version@@@
 # 必要なミドルウェアを全てインストール
 apt-get update || exigt 1
 
-# MySQL サーバーインストール時のウィザートに対しての設定値をセット
+# MySQL サーバーインストールウィザードの設定値をセット
 mysql_password=root
 echo "mysql-server-5.5 mysql-server/root_password password $mysql_password" | debconf-set-selections
 echo "mysql-server-5.5 mysql-server/root_password_again password $mysql_password" | debconf-set-selections
+# Postfix サーバーインストールウィザードの設定値をセット
+echo "postfix postfix/mailname string localdomain" | debconf-set-selections
+echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
-apt-get -y install apache2 mysql-server php5 php5-apcu php5-mysql php5-gd
+apt-get -y install apache2 mysql-server php5 php5-apcu php5-mysql php5-gd mailutils
 
 # Apache の rewrite モジュールを有効化
 a2enmod rewrite
