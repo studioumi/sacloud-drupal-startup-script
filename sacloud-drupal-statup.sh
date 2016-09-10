@@ -73,6 +73,7 @@ php -r "readfile('http://files.drush.org/drush.phar');" > drush || exit 1
 # drush コマンドを実行可能にして /usr/local/bin に移動
 chmod +x drush || exit 1
 mv drush /usr/local/bin || exit 1
+drush=/usr/local/bin/drush
 
 # Drupal をダウンロード
 if [ $DRUPAL_VERSION -eq 7 ]; then
@@ -80,7 +81,7 @@ if [ $DRUPAL_VERSION -eq 7 ]; then
 elif [ $DRUPAL_VERSION -eq 8 ]; then
   project=drupal-8
 fi
-drush -y dl $project --destination=/var/www --drupal-project-rename=html || exit 1
+$drush -y dl $project --destination=/var/www --drupal-project-rename=html || exit 1
 
 # アップロードされたファイルを保存するためのディレクトリを用意
 mkdir /var/www/html/sites/default/files /var/www/html/sites/default/private || exit 1
@@ -89,7 +90,7 @@ mkdir /var/www/html/sites/default/files /var/www/html/sites/default/private || e
 cd /var/www/html
 
 # Drupal をインストール
-drush -y si\
+$drush -y si\
   --db-url=mysql://root:root@localhost/drupal\
   --locale=ja\
   --account-name=@@@user_name@@@\
@@ -99,31 +100,31 @@ drush -y si\
 
 if [ $DRUPAL_VERSION -eq 7 ]; then
   # Drupal をローカライズするためのモジュールを有効化
-  drush -y en locale || exit 1
+  $drush -y en locale || exit 1
 
   # 日本のロケール設定
-  drush -y vset site_default_country JP || exit 1
+  $drush -y vset site_default_country JP || exit 1
 
   # 日本語をデフォルトの言語として追加
   # drush_language モジュールも使えるが、スタートアップスクリプトでは上手く
   # 動かないので eval を使う
-  drush eval "locale_add_language('ja', 'Japanese', '日本語');" || exit 1
-  drush eval '$langs = language_list(); variable_set("language_default", $langs["ja"])' || exit 1
+  $drush eval "locale_add_language('ja', 'Japanese', '日本語');" || exit 1
+  $drush eval '$langs = language_list(); variable_set("language_default", $langs["ja"])' || exit 1
 
   # 最新の日本語ファイルを取り込むモジュールをダウンロードしてインストール
-  drush -y dl l10n_update || exit 1
-  drush -y en l10n_update || exit 1
+  $drush -y dl l10n_update || exit 1
+  $drush -y en l10n_update || exit 1
 
   # 最新の日本語情報を取得してインポート
-  drush l10n-update-refresh || exit 1
-  drush l10n-update || exit 1
+  $drush l10n-update-refresh || exit 1
+  $drush l10n-update || exit 1
 elif [ $DRUPAL_VERSION -eq 8 ]; then
   # 日本語翻訳のインポート
-  drush locale-check || exit 1
-  drush locale-update || exit 1
+  $drush locale-check || exit 1
+  $drush locale-update || exit 1
 
   # 日本語訳がキャッシュにより中途半端な状態になることがあるので、キャッシュをリビルトする
-  drush cr || exit 1
+  $drush cr || exit 1
 fi
 
 # Drupal のルートディレクトリ (/var/www/html) 以下の所有者を apache に変更
@@ -142,7 +143,7 @@ chmod 755 /etc/cron.hourly/drupal || exit 1
 #   コマンドで1分後に実行する。
 # - `--update-backend=drupal` を指定しないと、レポート画面に正しく反映されない。
 sleep 1m
-drush -y up --update-backend=drupal || exit 1
+$drush -y up --update-backend=drupal || exit 1
 
 # いつ完了しているか分からないため、管理者メールアドレスに完了メールを送信
 
