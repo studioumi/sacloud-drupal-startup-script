@@ -2,14 +2,14 @@
 
 # @sacloud-once
 #
-# @sacloud-require-archive distro-ubuntu distro-ver-14.04
+# @sacloud-require-archive distro-ubuntu distro-ver-16.04
 #
 # @sacloud-desc-begin
 #   Drupalをインストールします。
 #   サーバ作成後、WebブラウザでサーバのIPアドレスにアクセスしてください。
 #   http://サーバのIPアドレス/
 #   ※ セットアップには5分程度時間がかかります。
-#   （このスクリプトは、Ubuntu 14.04でのみ動作します）
+#   （このスクリプトは、Ubuntu 16.04でのみ動作します）
 # @sacloud-desc-end
 #
 # Drupal の管理ユーザーの入力フォームの設定
@@ -29,13 +29,14 @@ apt-get update || exigt 1
 
 # MySQL サーバーインストールウィザードの設定値をセット
 mysql_password=root
-echo "mysql-server-5.5 mysql-server/root_password password $mysql_password" | debconf-set-selections
-echo "mysql-server-5.5 mysql-server/root_password_again password $mysql_password" | debconf-set-selections
+echo "mysql-server-5.7 mysql-server/root_password password $mysql_password" | debconf-set-selections
+echo "mysql-server-5.7 mysql-server/root_password_again password $mysql_password" | debconf-set-selections
 # Postfix サーバーインストールウィザードの設定値をセット
 echo "postfix postfix/mailname string localdomain" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
-apt-get -y install apache2 mysql-server php5 php5-apcu php5-mysql php5-gd mailutils
+
+apt-get -y install apache2 libapache2-mod-php mysql-server php php-apcu php-mysql php-gd php-xml mailutils
 
 # Apache の rewrite モジュールを有効化
 a2enmod rewrite
@@ -50,23 +51,23 @@ patch -l /etc/apache2/sites-available/000-default.conf << EOS
 EOS
 
 # PHP の各種設定
-patch /etc/php5/apache2/php.ini << EOS
-673c673
+patch /etc/php/7.0/apache2/php.ini << EOS
+656c656
 < post_max_size = 8M
 ---
 > post_max_size = 16M
-805c805
+798c798
 < upload_max_filesize = 2M
 ---
 > upload_max_filesize = 16M
-879c879
+912c912
 < ;date.timezone =
 ---
 > date.timezone = Asia/Tokyo
 EOS
 
 # ファイルアップロード時のプログレスバーを表示できるようにする
-echo "apc.rfc1867=1" >> /etc/php5/apache2/conf.d/20-apcu.ini
+echo "apc.rfc1867=1" >> /etc/php/7.0/apache2/conf.d/20-apcu.ini
 
 service apache2 restart
 
