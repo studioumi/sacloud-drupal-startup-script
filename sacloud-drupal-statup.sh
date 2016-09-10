@@ -2,14 +2,14 @@
 
 # @sacloud-once
 #
-# @sacloud-require-archive distro-centos distro-ver-7.*
+# @sacloud-require-archive distro-ubuntu distro-ver-14.04
 #
 # @sacloud-desc-begin
 #   Drupalをインストールします。
 #   サーバ作成後、WebブラウザでサーバのIPアドレスにアクセスしてください。
 #   http://サーバのIPアドレス/
 #   ※ セットアップには5分程度時間がかかります。
-#   （このスクリプトは、CentOS7.Xでのみ動作します）
+#   （このスクリプトは、Ubuntu 14.04でのみ動作します）
 # @sacloud-desc-end
 #
 # Drupal の管理ユーザーの入力フォームの設定
@@ -25,64 +25,47 @@
 DRUPAL_VERSION=@@@drupal_version@@@
 
 # 必要なミドルウェアを全てインストール
-yum makecache fast || exit 1
-# Drupal 7, 8 共通のパッケージをインストール
-yum -y install mariadb mariadb-server httpd || exit 1
-if [ $DRUPAL_VERSION -eq 7 ]; then
-  yum -y install php php-mysql php-gd php-dom php-mbstring || exit 1
-  yum -y install --enablerepo=remi php-pecl-apcu php-pecl-zendopcache || exit 1
-elif [ $DRUPAL_VERSION -eq 8 ]; then
-  yum -y install --enablerepo=remi,remi-php56 gd-last php php-mysql php-gd php-dom php-mbstring php-pecl-apcu php-pecl-zendopcache || exit 1
-fi
+apt-get update || exigt 1
+
+# MySQL サーバーインストール時のウィザートに対しての設定値をセット
+mysql_password=root
+echo "mysql-server-5.5 mysql-server/root_password password $mysql_password" | debconf-set-selections
+echo "mysql-server-5.5 mysql-server/root_password_again password $mysql_password" | debconf-set-selections
+
+apt-get -y install apache2 mysql-server php5 php5-apcu php5-mysql php5-gd
+
+# Apache の rewrite モジュールを有効化
+a2enmod rewrite
 
 # Drupal で .htaccess を使用するため /var/www/html ディレクトリに対してオーバーライドを全て許可する
-patch /etc/httpd/conf/httpd.conf << EOS
-151c151
-<     AllowOverride None
----
->     AllowOverride All
+patch -l /etc/apache2/sites-available/000-default.conf << EOS
+13a14,16
+>    <Directory /var/www/html>
+>        AllowOverride All
+>    </Directory>
+>
 EOS
 
-# MySQL の max_allowed_packet の設定を 16MB まで引き上げる
-patch /etc/my.cnf << EOS
-9a10
-> max_allowed_packet=16M
-EOS
-
-# PHP のデフォルトのタイムゾーンを東京に設定
-# Drupal のデフォルトのタイムゾーンにもなる
-patch /etc/php.ini << EOS
-672c672
+# PHP の各種設定
+patch /etc/php5/apache2/php.ini << EOS
+673c673
 < post_max_size = 8M
 ---
 > post_max_size = 16M
-800c800
+805c805
 < upload_max_filesize = 2M
 ---
 > upload_max_filesize = 16M
-878c878
+879c879
 < ;date.timezone =
 ---
 > date.timezone = Asia/Tokyo
 EOS
 
 # ファイルアップロード時のプログレスバーを表示できるようにする
-if [ $DRUPAL_VERSION -eq 7 ]; then
-  file_path=/etc/php.d/apcu.ini
-elif [ $DRUPAL_VERSION -eq 8 ]; then
-  # Drupal 8 の場合は REMI 版の APCu を使うためパスが違う
-  file_path=/etc/php.d/40-apcu.ini
-fi
-patch $file_path << EOS
-67c67
-< ;apc.rfc1867=0
----
-> apc.rfc1867=1
-EOS
+echo "apc.rfc1867=1" >> /etc/php5/apache2/conf.d/20-apcu.ini
 
-# MySQL サーバーを自動起動するようにして起動
-systemctl enable mariadb.service || exit 1
-systemctl start mariadb.service || exit 1
+service apache2 restart
 
 # 最新版の Drush をダウンロードする
 php -r "readfile('http://files.drush.org/drush.phar');" > drush || exit 1
@@ -107,7 +90,7 @@ cd /var/www/html
 
 # Drupal をインストール
 drush -y si\
-  --db-url=mysql://root@localhost/drupal\
+  --db-url=mysql://root:root@localhost/drupal\
   --locale=ja\
   --account-name=@@@user_name@@@\
   --account-pass=@@@password@@@\
@@ -144,7 +127,7 @@ elif [ $DRUPAL_VERSION -eq 8 ]; then
 fi
 
 # Drupal のルートディレクトリ (/var/www/html) 以下の所有者を apache に変更
-chown -R apache: /var/www/html || exit 1
+chown -R www-data: /var/www/html || exit 1
 
 # Drupal のクロンタスクを作成し一時間に一度の頻度で回す
 cat << EOS > /etc/cron.hourly/drupal
@@ -152,15 +135,6 @@ cat << EOS > /etc/cron.hourly/drupal
 /usr/local/bin/drush -r /var/www/html cron
 EOS
 chmod 755 /etc/cron.hourly/drupal || exit 1
-
-# Apache を自動起動する
-systemctl enable httpd.service || exit 1
-
-# Apache を起動する
-systemctl start httpd.service || exit 1
-
-# ファイアウォールに対し http プロトコルでのアクセスを許可する
-firewall-cmd --add-service=http || exit 1
 
 # レポート画面で利用可能なアップデートに問題があると警告されるため、アップデート
 # 処理を行う。
