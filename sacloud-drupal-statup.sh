@@ -2,14 +2,14 @@
 
 # @sacloud-once
 #
-# @sacloud-require-archive distro-ubuntu distro-ver-16.04
+# @sacloud-require-archive distro-ubuntu
 #
 # @sacloud-desc-begin
 #   Drupalをインストールします。
 #   サーバ作成後、WebブラウザでサーバのIPアドレスにアクセスしてください。
 #   http://サーバのIPアドレス/
 #   ※ セットアップには5分程度時間がかかります。
-#   （このスクリプトは、Ubuntu 16.04でのみ動作します）
+#   （このスクリプトは、Ubuntu 14.04 または 16.04 でのみ動作します）
 # @sacloud-desc-end
 #
 # Drupal の管理ユーザーの入力フォームの設定
@@ -22,21 +22,34 @@
 # @sacloud-password required shellarg maxlen=60 password "Drupal 管理ユーザーのパスワード"
 # @sacloud-text required shellarg maxlen=254 ex=your.name@example.com mail "Drupal 管理ユーザーのメールアドレス"
 
-DRUPAL_VERSION=@@@drupal_version@@@
+# ファイル内で定義されている `DISTRIB_RELEASE` に Ubuntu のバージョンが記載
+# されているので、それを利用して分岐をする
+source /etc/lsb-release
 
-# 必要なミドルウェアを全てインストール
-apt-get update || exigt 1
+DRUPAL_VERSION=@@@drupal_version@@@
 
 # MySQL サーバーインストールウィザードの設定値をセット
 mysql_password=root
-echo "mysql-server-5.7 mysql-server/root_password password $mysql_password" | debconf-set-selections
-echo "mysql-server-5.7 mysql-server/root_password_again password $mysql_password" | debconf-set-selections
+if [ $DISTRIB_RELEASE = "14.04" ]; then
+  mysql_package="mysql-server-5.5"
+elif [ $DISTRIB_RELEASE = "16.04" ]; then
+  mysql_package="mysql-server-5.7"
+fi
+echo "$mysql_package mysql-server/root_password password $mysql_password" | debconf-set-selections
+echo "$mysql_package mysql-server/root_password_again password $mysql_password" | debconf-set-selections
+
 # Postfix サーバーインストールウィザードの設定値をセット
 echo "postfix postfix/mailname string localdomain" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
-
-apt-get -y install apache2 libapache2-mod-php mysql-server php php-apcu php-mysql php-gd php-xml mailutils
+# 必要なミドルウェアを全てインストール
+apt-get update || exit 1
+if [ $DISTRIB_RELEASE = "14.04" ]; then
+  required_packages="apache2 mysql-server php5 php5-apcu php5-mysql php5-gd mailutils"
+elif [ $DISTRIB_RELEASE = "16.04" ]; then
+  required_packages="apache2 libapache2-mod-php mysql-server php php-apcu php-mysql php-gd php-xml mailutils"
+fi
+apt-get -y install $required_packages
 
 # Apache の rewrite モジュールを有効化
 a2enmod rewrite
@@ -51,7 +64,23 @@ patch -l /etc/apache2/sites-available/000-default.conf << EOS
 EOS
 
 # PHP の各種設定
-patch /etc/php/7.0/apache2/php.ini << EOS
+if [ $DISTRIB_RELEASE = "14.04" ]; then
+  patch /etc/php5/apache2/php.ini << EOS
+673c673
+< post_max_size = 8M
+---
+> post_max_size = 16M
+805c805
+< upload_max_filesize = 2M
+---
+> upload_max_filesize = 16M
+879c879
+< ;date.timezone =
+---
+> date.timezone = Asia/Tokyo
+EOS
+elif [ $DISTRIB_RELEASE = "16.04" ]; then
+  patch /etc/php/7.0/apache2/php.ini << EOS
 656c656
 < post_max_size = 8M
 ---
@@ -65,9 +94,14 @@ patch /etc/php/7.0/apache2/php.ini << EOS
 ---
 > date.timezone = Asia/Tokyo
 EOS
+fi
 
 # ファイルアップロード時のプログレスバーを表示できるようにする
-echo "apc.rfc1867=1" >> /etc/php/7.0/apache2/conf.d/20-apcu.ini
+if [ $DISTRIB_RELEASE = "14.04" ]; then
+  echo "apc.rfc1867=1" >> /etc/php5/apache2/conf.d/20-apcu.ini
+elif [ $DISTRIB_RELEASE = "16.04" ]; then
+  echo "apc.rfc1867=1" >> /etc/php/7.0/apache2/conf.d/20-apcu.ini
+fi
 
 service apache2 restart
 
