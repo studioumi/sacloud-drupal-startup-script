@@ -53,15 +53,19 @@ EOS
 # PHP のデフォルトのタイムゾーンを東京に設定
 # Drupal のデフォルトのタイムゾーンにもなる
 patch /etc/php.ini << EOS
-672c672
+396c396
+< memory_limit = 128M
+---
+> memory_limit = 192M
+663c663
 < post_max_size = 8M
 ---
 > post_max_size = 16M
-800c800
+811c811
 < upload_max_filesize = 2M
 ---
 > upload_max_filesize = 16M
-878c878
+889c889
 < ;date.timezone =
 ---
 > date.timezone = Asia/Tokyo
